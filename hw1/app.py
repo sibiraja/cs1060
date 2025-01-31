@@ -121,7 +121,8 @@ def translate():
 
     # Get the primary language code of the selected country
     language_code = get_country_language_code(country)
-    if not language_code:
+
+    if language_code == "en" and country != "USA":  # If the language is English but it's not the USA, it's an invalid country
         return jsonify({"translated_word": "Language not found for this country."})
 
     # Translate word to detected language
@@ -131,6 +132,7 @@ def translate():
         translated_word = "Translation not found."
 
     return jsonify({"translated_word": translated_word})
+
 
 @app.route("/next_word", methods=["GET"])
 def next_word():
