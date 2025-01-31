@@ -1,6 +1,6 @@
 # Define input and output file names
 input_file = "20k.txt"   # Replace with your actual file name
-output_file = "filtered_words.txt"
+output_file = "words.txt"
 
 # Read and filter words
 with open(input_file, "r") as infile, open(output_file, "w") as outfile:

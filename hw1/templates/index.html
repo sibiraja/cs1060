@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess the Word</title>
+</head>
+<body>
+    <h1>Guess the Word!</h1>
+    <p><strong>Definition:</strong> {{ definition }}</p>
+
+    <form method="POST">
+        <input type="text" name="guess" placeholder="Your guess..." required>
+        <button type="submit">Submit</button>
+    </form>
+
+    {% if message %}
+        <p>{{ message }}</p>
+    {% endif %}
+
+    {% if show_next_button %}
+        <form action="{{ url_for('next_word') }}" method="GET">
+            <button type="submit">Next Word</button>
+        </form>
+    {% endif %}
+</body>
+</html>
