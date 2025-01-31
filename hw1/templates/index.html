@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guess the Country Word</title>
+    <title>Guess the Word</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
@@ -15,44 +15,92 @@
             height: 400px;
             width: 80%;
             margin: auto;
+            display: none; /* Hide map initially */
             border-radius: 10px;
+        }
+        .message {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .correct {
+            color: green;
+        }
+        .incorrect {
+            color: red;
         }
     </style>
 </head>
 <body>
 
-    <h1>Click on a Country</h1>
-    <div id="map"></div>
-    
-    <p id="hint">Click a country to get a hint.</p>
+    <h1>Guess the Word!</h1>
+    <p><strong>Definition:</strong> {{ definition }}</p>
 
-    <form action="/guess" method="POST">
+    <form method="POST">
         <input type="text" name="guess" placeholder="Your guess..." required>
         <button type="submit">Submit</button>
     </form>
 
+    {% if message %}
+        <p class="message {% if show_map %}correct{% else %}incorrect{% endif %}">
+            {{ message }}
+        </p>
+    {% endif %}
+
+    {% if show_map %}
+        <h2>Click a country to translate the word</h2>
+        <div id="map"></div>
+        <p id="translated-word"></p>
+
+        <form action="/next_word" method="GET">
+            <button type="submit">Next Word</button>
+        </form>
+    {% endif %}
+
     <script>
-        var map = L.map('map').setView([20, 0], 2); // Center the map at a global view
+        {% if show_map %}
+            document.getElementById("map").style.display = "block";
 
-        // Add OpenStreetMap tiles (Free & No API key required)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+            var map = L.map('map').setView([20, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
 
-        // Click event to select a country
-        function onMapClick(e) {
-            fetch("/select_country", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ country: "France" })  // Replace with dynamic country detection
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById("hint").innerText = data.hint;
-            });
-        }
+            // Function to fetch country name based on coordinates
+            function getCountry(lat, lon, callback) {
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.address && data.address.country) {
+                            callback(data.address.country);
+                        } else {
+                            callback(null);
+                        }
+                    })
+                    .catch(() => callback(null));
+            }
 
-        map.on('click', onMapClick);
+            // Click event to detect country
+            function onMapClick(e) {
+                getCountry(e.latlng.lat, e.latlng.lng, function(country) {
+                    if (!country) {
+                        document.getElementById("translated-word").innerText = "Country not found.";
+                        return;
+                    }
+
+                    fetch("/translate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ country: country })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById("translated-word").innerText = "Translation: " + data.translated_word;
+                    });
+                });
+            }
+
+            map.on('click', onMapClick);
+        {% endif %}
     </script>
 
 </body>
