@@ -1,59 +1,46 @@
-from flask import Flask, render_template, request, redirect, url_for
-import requests
+from flask import Flask, render_template, request, redirect, url_for, jsonify
+import json
+import random
 
 app = Flask(__name__)
 
-# Load words from the text file
-with open("new_words.txt", "r") as f:
-    words = [word.strip() for word in f.readlines()]
+# Load country-related words from JSON file
+with open("country_words.json", "r") as f:
+    country_words = json.load(f)
 
-word_index = 0  # In-memory tracking, resets when server restarts
+selected_country = None
+selected_word = None
 
-# Function to get a word definition from the dictionary API
-def get_definition(word):
-    url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        try:
-            return data[0]["meanings"][0]["definitions"][0]["definition"]
-        except (KeyError, IndexError):
-            return None
-    return None
-
-@app.route("/", methods=["GET", "POST"])
+@app.route("/")
 def index():
-    global word_index  # Use global variable for tracking progress
+    return render_template("index.html")
 
-    if word_index >= len(words):  # Restart from the first word when the list is done
-        word_index = 0
+@app.route("/select_country", methods=["POST"])
+def select_country():
+    global selected_country, selected_word
 
-    current_word = words[word_index]
-    definition = get_definition(current_word)
+    data = request.get_json()
+    selected_country = data.get("country")
 
-    # If no definition is found, skip to the next word
-    if not definition:
-        word_index += 1
-        return redirect(url_for("index"))  
+    if selected_country in country_words:
+        selected_word = random.choice(country_words[selected_country])
+        hint = f"This word is related to {selected_country}."
+    else:
+        selected_word = None
+        hint = "No words available for this country."
 
-    message = ""
-    show_next_button = False  # Controls whether "Next Word" button appears
+    return jsonify({"hint": hint})
 
-    if request.method == "POST":
-        user_guess = request.form.get("guess", "").strip().lower()
-        if user_guess == current_word:
-            message = "✅ Correct!"
-            show_next_button = True  # Show "Next Word" button
-        else:
-            message = "❌ Incorrect! Try again."
+@app.route("/guess", methods=["POST"])
+def guess():
+    global selected_word
 
-    return render_template("index.html", definition=definition, message=message, show_next_button=show_next_button)
-
-@app.route("/next")
-def next_word():
-    global word_index
-    word_index += 1  # Move to the next word
-    return redirect(url_for("index"))
+    user_guess = request.form.get("guess", "").strip().lower()
+    correct = user_guess.lower() == selected_word.lower()
+    
+    return render_template("game.html", hint=f"Hint: This word is related to {selected_country}.", 
+                           message="✅ Correct!" if correct else "❌ Incorrect! Try again.", 
+                           show_next_button=correct)
 
 if __name__ == "__main__":
     app.run(debug=True)
