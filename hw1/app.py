@@ -11,30 +11,47 @@ with open("new_words.txt", "r") as f:
 word_index = 0
 selected_word = None
 
-# Function to get a word definition from the dictionary API
-def get_definition(word):
-    url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        try:
-            data = response.json()
-            return data[0]["meanings"][0]["definitions"][0]["definition"]
-        except (KeyError, IndexError):
-            return None
-    return None
+# Language name to ISO 639-1 code mapping
+language_codes = {
+    "Afrikaans": "af", "Albanian": "sq", "Amharic": "am", "Arabic": "ar", "Armenian": "hy",
+    "Azerbaijani": "az", "Basque": "eu", "Belarusian": "be", "Bengali": "bn", "Bosnian": "bs",
+    "Bulgarian": "bg", "Catalan": "ca", "Cebuano": "ceb", "Chichewa": "ny", "Chinese": "zh",
+    "Corsican": "co", "Croatian": "hr", "Czech": "cs", "Danish": "da", "Dutch": "nl",
+    "English": "en", "Esperanto": "eo", "Estonian": "et", "Filipino": "tl", "Finnish": "fi",
+    "French": "fr", "Frisian": "fy", "Galician": "gl", "Georgian": "ka", "German": "de",
+    "Greek": "el", "Gujarati": "gu", "Haitian Creole": "ht", "Hausa": "ha", "Hawaiian": "haw",
+    "Hebrew": "iw", "Hindi": "hi", "Hmong": "hmn", "Hungarian": "hu", "Icelandic": "is",
+    "Igbo": "ig", "Indonesian": "id", "Irish": "ga", "Italian": "it", "Japanese": "ja",
+    "Javanese": "jv", "Kannada": "kn", "Kazakh": "kk", "Khmer": "km", "Korean": "ko",
+    "Kurdish": "ku", "Kyrgyz": "ky", "Lao": "lo", "Latin": "la", "Latvian": "lv",
+    "Lithuanian": "lt", "Luxembourgish": "lb", "Macedonian": "mk", "Malagasy": "mg",
+    "Malay": "ms", "Malayalam": "ml", "Maltese": "mt", "Maori": "mi", "Marathi": "mr",
+    "Mongolian": "mn", "Myanmar (Burmese)": "my", "Nepali": "ne", "Norwegian": "no",
+    "Pashto": "ps", "Persian": "fa", "Polish": "pl", "Portuguese": "pt", "Punjabi": "pa",
+    "Romanian": "ro", "Russian": "ru", "Samoan": "sm", "Scots Gaelic": "gd", "Serbian": "sr",
+    "Sesotho": "st", "Shona": "sn", "Sindhi": "sd", "Sinhala": "si", "Slovak": "sk",
+    "Slovenian": "sl", "Somali": "so", "Spanish": "es", "Sundanese": "su", "Swahili": "sw",
+    "Swedish": "sv", "Tajik": "tg", "Tamil": "ta", "Telugu": "te", "Thai": "th",
+    "Turkish": "tr", "Ukrainian": "uk", "Urdu": "ur", "Uzbek": "uz", "Vietnamese": "vi",
+    "Welsh": "cy", "Xhosa": "xh", "Yiddish": "yi", "Yoruba": "yo", "Zulu": "zu"
+}
 
-# Function to get the official language of a country
-def get_country_language(country_name):
+# Function to get the ISO language code for a country
+def get_country_language_code(country_name):
     country_api_url = f"https://restcountries.com/v3.1/name/{country_name}"
     response = requests.get(country_api_url)
     if response.status_code == 200:
         try:
             data = response.json()[0]
-            # Extract the first official language from the response
-            return list(data["languages"].values())[0]  # Returns the language name
+            languages = list(data["languages"].values())
+            language_name = languages[0]  # Get the first language
+            if len(languages) > 1 and language_name == "English": # NOTE: sometimes the countries list English as the first language, so use the second one if it exists
+                language_name = languages[1]
+            print(language_name)
+            return language_codes.get(language_name, "en")  # Default to English if not found
         except (IndexError, KeyError):
-            return None
-    return None
+            return "en"  # Default to English if no language found
+    return "en"
 
 # Function to translate a word using Google Translate API
 def translate_word(word, target_lang_code):
@@ -53,6 +70,19 @@ def translate_word(word, target_lang_code):
         except (IndexError, KeyError):
             return None
     return None
+
+# Function to get a word definition from the dictionary API
+def get_definition(word):
+    url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        try:
+            data = response.json()
+            return data[0]["meanings"][0]["definitions"][0]["definition"]
+        except (KeyError, IndexError):
+            return None
+    return None
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -89,13 +119,13 @@ def translate():
     data = request.get_json()
     country = data.get("country")
 
-    # Get the primary language of the selected country
-    language = get_country_language(country)
-    if not language:
+    # Get the primary language code of the selected country
+    language_code = get_country_language_code(country)
+    if not language_code:
         return jsonify({"translated_word": "Language not found for this country."})
 
     # Translate word to detected language
-    translated_word = translate_word(selected_word, language)
+    translated_word = translate_word(selected_word, language_code)
 
     if not translated_word:
         translated_word = "Translation not found."
