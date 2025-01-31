@@ -5,7 +5,7 @@ import random
 app = Flask(__name__)
 
 # Load predefined word list
-with open("new_words.txt", "r") as f:
+with open("wordlists/new_words.txt", "r") as f:
     words = [word.strip() for word in f.readlines()]
 
 word_index = 0
@@ -47,7 +47,7 @@ def get_country_language_code(country_name):
             language_name = languages[0]  # Get the first language
             if len(languages) > 1 and language_name == "English": # NOTE: sometimes the countries list English as the first language, so use the second one if it exists
                 language_name = languages[1]
-            print(language_name)
+            # print(language_name)
             return language_codes.get(language_name, "en")  # Default to English if not found
         except (IndexError, KeyError):
             return "en"  # Default to English if no language found
