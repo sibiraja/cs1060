@@ -65,7 +65,6 @@
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
-            // Function to fetch country name based on coordinates
             function getCountry(lat, lon, callback) {
                 fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
                     .then(response => response.json())
@@ -79,7 +78,6 @@
                     .catch(() => callback(null));
             }
 
-            // Click event to detect country
             function onMapClick(e) {
                 getCountry(e.latlng.lat, e.latlng.lng, function(country) {
                     if (!country) {

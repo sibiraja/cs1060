@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import requests
-import json
 import random
 
 app = Flask(__name__)
@@ -8,21 +7,6 @@ app = Flask(__name__)
 # Load predefined word list
 with open("new_words.txt", "r") as f:
     words = [word.strip() for word in f.readlines()]
-
-# Country-language mapping
-country_languages = {
-    "France": "fr",
-    "Japan": "ja",
-    "Brazil": "pt",
-    "Italy": "it",
-    "India": "hi",
-    "USA": "es",  # Spanish as an example
-    "Germany": "de",
-    "China": "zh",
-    "Russia": "ru",
-    "South Korea": "ko",
-    "Mexico": "es"
-}
 
 word_index = 0
 selected_word = None
@@ -39,13 +23,26 @@ def get_definition(word):
             return None
     return None
 
-# Function to translate word to the target language using Google Translate API
-def translate_word(word, target_lang):
+# Function to get the official language of a country
+def get_country_language(country_name):
+    country_api_url = f"https://restcountries.com/v3.1/name/{country_name}"
+    response = requests.get(country_api_url)
+    if response.status_code == 200:
+        try:
+            data = response.json()[0]
+            # Extract the first official language from the response
+            return list(data["languages"].values())[0]  # Returns the language name
+        except (IndexError, KeyError):
+            return None
+    return None
+
+# Function to translate a word using Google Translate API
+def translate_word(word, target_lang_code):
     translate_url = "https://translate.googleapis.com/translate_a/single"
     params = {
         "client": "gtx",
-        "sl": "en",
-        "tl": target_lang,
+        "sl": "en",  # Source language: English
+        "tl": target_lang_code,  # Target language
         "dt": "t",
         "q": word
     }
@@ -92,11 +89,16 @@ def translate():
     data = request.get_json()
     country = data.get("country")
 
-    # Match the clicked country to its language
-    if country in country_languages:
-        translated_word = translate_word(selected_word, country_languages[country])
-    else:
-        translated_word = "Translation not available for this country."
+    # Get the primary language of the selected country
+    language = get_country_language(country)
+    if not language:
+        return jsonify({"translated_word": "Language not found for this country."})
+
+    # Translate word to detected language
+    translated_word = translate_word(selected_word, language)
+
+    if not translated_word:
+        translated_word = "Translation not found."
 
     return jsonify({"translated_word": translated_word})
 
